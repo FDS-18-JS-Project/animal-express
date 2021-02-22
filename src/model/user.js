@@ -8,13 +8,11 @@ const userSchema = new Schema({
     },
     password: String,
     name: String,
-    token: String,
-    tokenExp: Number,
     bookmark: String,
 },
 {
     timestamps: true
 })
 
-const user = model('User', userSchema);
-export default user;
+const User = model('User', userSchema);
+export default User;

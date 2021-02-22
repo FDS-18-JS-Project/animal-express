@@ -9,7 +9,10 @@ const petSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "Like"
     }],
-    comments: [String],
+    comments: [{
+        type: Schema.Types.ObjectId,
+        ref: "Comment"
+    }],
     owner: {
         type: Schema.Types.ObjectId,
         ref: "User"
@@ -19,5 +22,5 @@ const petSchema = new Schema({
     timestamps: true
 })
 
-const pet = model('Pet', petSchema);
-export default pet;
+const Pet = model('Pet', petSchema);
+export default Pet;

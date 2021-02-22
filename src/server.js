@@ -1,6 +1,16 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import mongoose from 'mongoose';
+import passport from 'passport';
+import cors from 'cors';
+import bodyParser from 'body-parser';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import myPassport from './passport';
+import User from './model/user';
+import Pet from './model/pet';
+import Like from './model/like';
+import Comment from './model/comment';
 
 dotenv.config();
 const app = express();
@@ -16,40 +26,194 @@ mongoose.connect(process.env.MONGO_URL, {
     console.log(err);
 });
 
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+
+app.use(passport.initialize());
+myPassport(passport);
+
 app.post('/signup', (req, res) => {
-    
+    const { email, password, name } = req.body;
+    User.findOne({ email }).then(async user => {
+        try {
+            if(user) {
+                throw new Error('Existed user')
+            }
+            const newUser = new User({
+                email,
+                name,
+                password
+            });
+            const salt = await bcrypt.genSalt(5);
+            const hashed = await bcrypt.hash(password, salt);
+            newUser.password = hashed;
+            await newUser.save();
+            res.json({
+                ok: true,
+                user: newUser
+            })
+        } catch(err) {
+            console.log(err);
+            return res.status(400).json({
+                ok: false,
+                error: err.message
+            })
+        }
+    })
 });
 
 app.post('/login', (req, res) => {
+    const { email, password } = req.body;
 
+    User.findOne({ email }).then(async user => {
+        try {
+            if(!user) {
+                throw new Error('Not sign up yet');
+            }
+            const isMatch = await bcrypt.compare(password, user.password);
+            if(!isMatch) {
+                throw new Error('Password is not matched');
+            }
+            const payload = {
+                id: user._id,
+                name: user.name
+            }
+            const token = await jwt.sign(payload, process.env.SECRET, { expiresIn: 3600 * 24 });
+            res.json({
+                ok: true,
+                payload: payload,
+                token: 'Bearer ' + token
+            })
+        } catch(err) {
+            console.log(err);
+            res.status(400).json({
+                ok: false,
+                error: err.message
+            })
+        }
+    });
 });
 
 app.get('/logout', (req, res) => {
-
+    req.logout();
+    res.json({
+        ok: true,
+        message: 'logout'
+    })
 });
 
-app.put('/favorites', (req, res) => {
+// app.put('/favorites', passport.authenticate('jwt', { session: false }), (req, res) => {
 
+// });
+
+// app.post('/like', passport.authenticate('jwt', { session: false }), (req, res) => {
+//     const { like } = req.body;
+//     Like.findOne({ user }).then(async like => {
+//         try {
+//             const newLike = new Like({
+//                 like: true
+//             });
+
+//             await newLike.save();
+//             res.json({
+//                 ok: true,
+//             })
+//         } catch(err) {
+//             console.log(err);
+//             res.status(400).json({
+//                 ok: false,
+//                 error: err.message
+//             })
+//         }
+//     })
+// });
+
+// app.delete('/like', passport.authenticate('jwt', { session: false }), (req, res) => {
+
+// });
+
+app.post('/comment', passport.authenticate('jwt', { session: false }), async (req, res) => {
+        const { comment, petId, userId } = req.body;
+        try {
+            const newComment = new Comment({
+                comment,
+                pet: petId,
+                owner: userId
+            })
+            newComment.save();
+
+            const pet = await Pet.findById(petId);
+            await pet.updateOne({comments: [...pet.comments, newComment._id]})
+            res.json(await Comment.findOne({_id: newComment._id})).populate('owner');
+
+        } catch (error) {
+            console.log(error);
+            res.status(400).json({
+                ok: false,
+                error: error.message
+            })
+        }
+})
+
+app.post('/pets', passport.authenticate('jwt', { session: false }), async (req, res) => {
+    const { name, deathDate, favorites, image, userId } = req.body;
+
+    try {
+        const pet = await Pet.findOne({ name });
+
+        if(pet) {
+            throw new Error('Your pet is already register');
+        }
+
+        const newPet = new Pet({
+            name,
+            deathDate,
+            favorites,
+            image,
+            owner: userId
+        })
+
+        await newPet.save();
+        res.json({
+            ok: true,
+            pet: newPet
+        })
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({
+            ok: false,
+            error: error.message
+        })
+    }
 });
 
-app.post('/like', (req, res) => {
+app.get('/pets', passport.authenticate('jwt', { session: false }), async (req, res) => {
+    if(req.body.petId) {
+        try {
+            const pet = await Pet.findOne({ _id: req.body.petId }).populate('owner').populate({path:'comments', populate: {path:'owner'}});
+            res.json({pet});
+        } catch (error) {
+            console.log(error);
+            res.status(400).json({
+                ok: false,
+                error: error.message
+            })
+        }
+    } else {
+        try {
+            const pets = await Pet.find({}).populate('owner').populate({path:'comments', populate: {path:'owner'}});
+            if (!pets.length) return res.status(404).send({ err: 'No animal exists' });
+            res.json({pets});
+        } catch (error) {
+            console.log(error);
+            res.status(400).json({
+                ok: false,
+                error: error.message
+            })
+        }
 
-});
-
-app.delete('/like', (req, res) => {
-
-});
-
-app.post('/pets', (req, res) => {
-
-});
-
-app.get('/pets', (req, res) => {
-
-});
-
-app.get('/pets/:id', (req, res) => {
-
+    }
 });
 
 app.listen(PORT, () => {
