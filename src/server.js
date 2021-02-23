@@ -12,9 +12,12 @@ import Pet from './model/pet';
 import Like from './model/like';
 import Comment from './model/comment';
 
+
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT;
+const multer  = require('multer')
+const upload = multer({ dest: 'uploads/' })
 
 // db
 mongoose.connect(process.env.MONGO_URL, {
@@ -57,7 +60,6 @@ app.post('/signup', async (req, res) => {
             name: newUser.username
         }
         const token = await jwt.sign(payload, process.env.SECRET, { expiresIn: 3600 * 24 });
-        // req.cookies.set('access_token', token, { httpOnly: true, maxAge: 3600 * 24 });
 
         res.json({
             ok: true,
@@ -93,7 +95,6 @@ app.post('/login', async (req, res) => {
             name: user.name
         }
         const token = await jwt.sign(payload, process.env.SECRET, { expiresIn: 3600 * 24 });
-        // req.cookies.set('access_token', token, { httpOnly: true, maxAge: 3600 * 24 });
 
         res.json({
             ok: true,
@@ -118,6 +119,24 @@ app.get('/logout', (req, res) => {
     })
 });
 
+app.get('/userdata', passport.authenticate('jwt', { session: false }), (req, res) => {
+    const { userId } = req.body;
+    try {
+        const user = await User.findOne({ userId });
+        console.log(user);
+
+        res.json({
+            ok: true,
+            payload: user,
+        })
+    } catch(err) {
+        console.log(err);
+        res.status(400).json({
+            ok: false,
+            error: err.message
+        })
+    };
+});
 // app.put('/favorites', passport.authenticate('jwt', { session: false }), (req, res) => {
 
 // });
@@ -171,7 +190,7 @@ app.post('/comment', passport.authenticate('jwt', { session: false }), async (re
     }
 })
 
-app.post('/pets', passport.authenticate('jwt', { session: false }), async (req, res) => {
+app.post('/pets', upload.single('animal-img'), passport.authenticate('jwt', { session: false }), async (req, res) => {
     const { name, deathDate, favorites, image, userId } = req.body;
 
     try {
