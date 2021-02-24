@@ -119,11 +119,10 @@ app.get('/logout', (req, res) => {
     })
 });
 
-app.get('/userdata', passport.authenticate('jwt', { session: false }), (req, res) => {
+app.get('/userdata', passport.authenticate('jwt', { session: false }), async(req, res) => {
     const { userId } = req.body;
     try {
-        const user = await User.findOne({ userId });
-        console.log(user);
+        const user = await User.findById(userId);
 
         res.json({
             ok: true,
@@ -222,31 +221,31 @@ app.post('/pets', upload.single('animal-img'), passport.authenticate('jwt', { se
     }
 });
 
-app.get('/pets', passport.authenticate('jwt', { session: false }), async (req, res) => {
-    if(req.body.petId) {
-        try {
-            const pet = await Pet.findOne({ _id: req.body.petId }).populate('owner').populate({path:'comments', populate: {path:'owner'}});
-            res.json({pet});
-        } catch (error) {
-            console.log(error);
-            res.status(400).json({
-                ok: false,
-                error: error.message
-            })
-        }
-    } else {
-        try {
-            const pets = await Pet.find({}).populate('owner').populate({path:'comments', populate: {path:'owner'}});
-            if (!pets.length) return res.status(404).send({ err: 'No animal exists' });
-            res.json({pets});
-        } catch (error) {
-            console.log(error);
-            res.status(400).json({
-                ok: false,
-                error: error.message
-            })
-        }
+app.get('/pet/:id', passport.authenticate('jwt', { session: false }), async (req, res) => {
+    console.log(req.params.id);
+    try {
+        const pet = await Pet.findOne({ _id: req.params.id }).populate('owner').populate({path:'comments', populate: {path:'owner'}});
+        res.json({pet});
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({
+            ok: false,
+            error: error.message
+        })
+    }
+});
 
+app.get('/pets', passport.authenticate('jwt', { session: false }), async (req, res) => {
+    try {
+        const pets = await Pet.find({}).populate('owner').populate({path:'comments', populate: {path:'owner'}});
+        if (!pets.length) return res.status(404).send({ err: 'No animal exists' });
+        res.json({pets});
+    } catch (error) {
+        console.log(error);
+        res.status(400).json({
+            ok: false,
+            error: error.message
+        })
     }
 });
 

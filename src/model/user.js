@@ -7,7 +7,7 @@ const userSchema = new Schema({
         required: true
     },
     password: String,
-    name: String,
+    username: String,
     bookmark: String,
 },
 {
