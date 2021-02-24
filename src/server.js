@@ -119,10 +119,9 @@ app.get('/logout', (req, res) => {
     })
 });
 
-app.get('/userdata', passport.authenticate('jwt', { session: false }), async(req, res) => {
-    const { userId } = req.body;
+app.get('/userdata/:id', passport.authenticate('jwt', { session: false }), async(req, res) => {
     try {
-        const user = await User.findById(userId);
+        const user = await User.findById(req.params.id);
 
         res.json({
             ok: true,
