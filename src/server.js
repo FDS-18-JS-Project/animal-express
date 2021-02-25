@@ -77,7 +77,6 @@ app.post('/signup', async (req, res) => {
             error: err.message
         })
     }
-
 });
 
 app.post('/login', async (req, res) => {
@@ -193,40 +192,6 @@ app.post('/comment', passport.authenticate('jwt', { session: false }), async (re
     }
 })
 
-const upload = multer({
-    storage: multer.diskStorage({
-      destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-      },
-      filename: (req, file, cb) => {
-        cb(null, new Date().valueOf() + path.extname(file.originalname));
-      },
-    }),
-  });
-
-
-
-// app.patch('/pet/:id', upload.single('animal-img'), async (req, res) => {
-//     console.log(req.params);
-//     console.log(req.file);
-
-//     try {
-//         await Pet.findByIdAndUpdate(req.params.id, req.file);
-//         const pet = Pet.findById(req.params.id);
-
-//         res.json({
-//             ok: true,
-//             pet: pet,
-//         })
-//     } catch (error) {
-//         console.log(error);
-//         res.status(400).json({
-//             ok: false,
-//             error: error.message
-//         })
-//     }
-// });
-
 app.get('/pet/:id', passport.authenticate('jwt', { session: false }), async (req, res) => {
     console.log(req.params.id);
     try {
@@ -241,10 +206,21 @@ app.get('/pet/:id', passport.authenticate('jwt', { session: false }), async (req
     }
 });
 
+
+const upload = multer({
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+      },
+      filename: (req, file, cb) => {
+        cb(null, new Date().valueOf() + path.extname(file.originalname));
+      },
+    }),
+  });
+
 app.post('/pet/:id', upload.any('animal-img'), passport.authenticate('jwt', { session: false }), async (req, res) => {
-    console.log(req.body);
-    console.log(req.params);
-    console.log(req.files[0].path);
+    const favorites = [req.body.favorite1,req.body.favorite2, req.body.favorite3];
+
     try {
         const pet = await Pet.findOne({ _id: req.params.id });
 
@@ -255,7 +231,7 @@ app.post('/pet/:id', upload.any('animal-img'), passport.authenticate('jwt', { se
         const newPet = new Pet({
             name: req.body.petName,
             deathDate: req.body.deathDate,
-            favorites: req.body.favorites,
+            favorites: favorites,
             owner: req.params.id,
             image: 'http://localhost:8080/' + req.files[0].path
         })
