@@ -46,7 +46,7 @@ app.post('/signup', async (req, res) => {
     try {
         const user = await User.findOne({ email });
         if(user) {
-            throw new Error('Existed user')
+            throw new Error('이미 등록된 유저입니다')
         }
         
         const newUser = new User({
@@ -86,12 +86,12 @@ app.post('/login', async (req, res) => {
         const user = await User.findOne({ email });
         console.log(user);
         if(!user) {
-            throw new Error('Not sign up yet');
+            throw new Error('등록되지 않은 정보입니다');
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if(!isMatch) {
-            throw new Error('Password is not matched');
+            throw new Error('패스워드가 맞지 않습니다');
         }
 
         const payload = {
@@ -104,11 +104,11 @@ app.post('/login', async (req, res) => {
             ok: true,
             payload: user,
             username: user.name,
-            token: 'Bearer ' + token
+            token: token
         })
     } catch(err) {
         console.log(err);
-        res.status(400).json({
+        return res.status(400).json({
             ok: false,
             error: err.message
         })
@@ -117,7 +117,7 @@ app.post('/login', async (req, res) => {
 
 app.get('/logout', (req, res) => {
     req.logout();
-    res.json({
+    return res.json({
         ok: true,
         message: 'logout'
     })
@@ -134,7 +134,7 @@ app.get('/userdata/:id', passport.authenticate('jwt', { session: false }), async
         })
     } catch(err) {
         console.log(err);
-        res.status(400).json({
+        return res.status(400).json({
             ok: false,
             error: err.message
         })
@@ -186,7 +186,7 @@ app.post('/comment', passport.authenticate('jwt', { session: false }), async (re
 
     } catch (error) {
         console.log(error);
-        res.status(400).json({
+        return res.status(400).json({
             ok: false,
             error: error.message
         })
@@ -234,7 +234,7 @@ app.get('/pet/:id', passport.authenticate('jwt', { session: false }), async (req
         res.json({pet});
     } catch (error) {
         console.log(error);
-        res.status(400).json({
+        return res.status(400).json({
             ok: false,
             error: error.message
         })
@@ -249,7 +249,7 @@ app.post('/pet/:id', upload.any('animal-img'), passport.authenticate('jwt', { se
         const pet = await Pet.findOne({ _id: req.params.id });
 
         if(pet) {
-            throw new Error('Your pet is already register');
+            throw new Error('동일한 이름이 벌써 등록되어 있습니다');
         }
 
         const newPet = new Pet({
@@ -261,6 +261,7 @@ app.post('/pet/:id', upload.any('animal-img'), passport.authenticate('jwt', { se
         })
 
         await newPet.save();
+
         res.json({
             ok: true,
             pet: newPet,
@@ -291,7 +292,7 @@ app.get('/pet/:id', passport.authenticate('jwt', { session: false }), async (req
 app.get('/pets', passport.authenticate('jwt', { session: false }), async (req, res) => {
     try {
         const pets = await Pet.find({}).populate('owner').populate({path:'comments', populate: {path:'owner'}});
-        if (!pets.length) return res.status(404).send({ err: 'No animal exists' });
+        if (!pets.length) throw new Error('등록된 동물이 없습니다');
         res.json({pets});
     } catch (error) {
         console.log(error);
