@@ -220,7 +220,7 @@ const upload = multer({
 
 app.post('/pet/:id', upload.any('animal-img'), passport.authenticate('jwt', { session: false }), async (req, res) => {
     const favorites = [req.body.favorite1,req.body.favorite2, req.body.favorite3];
-
+    console.log(favorites);
     try {
         const pet = await Pet.findOne({ _id: req.params.id });
 
@@ -235,9 +235,9 @@ app.post('/pet/:id', upload.any('animal-img'), passport.authenticate('jwt', { se
             owner: req.params.id,
             image: 'http://localhost:8080/' + req.files[0].path
         })
-
+        console.log(newPet);
         await newPet.save();
-
+        console.log(newPet);
         res.json({
             ok: true,
             pet: newPet,
